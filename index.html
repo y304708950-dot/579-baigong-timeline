@@ -564,6 +564,95 @@ body.edit-on .edit-hint{display:inline-flex}
   html{scroll-behavior:auto}
 }
 
+/* ========== Developer Mode (Password Gate) ========== */
+.pw-modal{
+  position:fixed;inset:0;background:rgba(2,6,23,.88);z-index:400;
+  display:none;align-items:center;justify-content:center;
+  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+  animation:fadeIn .2s;
+}
+.pw-modal.show{display:flex}
+.pw-card{
+  background:var(--bg-card);border:1px solid var(--border);border-radius:16px;
+  padding:32px 36px;max-width:400px;width:90%;
+  box-shadow:var(--shadow-lg);
+  position:relative;
+}
+.pw-card::before{
+  content:"";position:absolute;top:0;left:0;right:0;height:3px;
+  background:linear-gradient(90deg,var(--accent),var(--gold));
+  border-radius:16px 16px 0 0;
+}
+.pw-card h3{
+  color:var(--heading);font-size:20px;font-weight:800;margin-bottom:8px;
+  display:flex;align-items:center;gap:10px;letter-spacing:-.3px;
+}
+.pw-card h3::before{
+  content:"🔒";font-size:24px;display:inline-block;
+  filter:drop-shadow(0 0 8px rgba(249,115,22,.5));
+}
+.pw-card .pw-sub{color:var(--text-muted);font-size:13px;margin-bottom:22px;line-height:1.5}
+.pw-input{
+  width:100%;padding:12px 14px;background:var(--bg-2);
+  border:1.5px solid var(--border);border-radius:10px;
+  color:var(--heading);font-size:15px;font-family:inherit;
+  margin-bottom:8px;transition:border-color .2s,box-shadow .2s;
+}
+.pw-input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.pw-input::placeholder{color:var(--text-faint)}
+.pw-error{
+  color:#EF4444;font-size:13px;min-height:18px;margin-bottom:8px;
+  display:flex;align-items:center;gap:6px;font-weight:500;
+}
+.pw-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:6px}
+.pw-btn{
+  padding:10px 22px;border-radius:8px;border:1px solid var(--border);
+  background:var(--bg-elevated);color:var(--text);font-size:13px;
+  cursor:pointer;font-family:inherit;font-weight:600;
+  transition:all .2s;
+}
+.pw-btn:hover{background:var(--bg-hover);border-color:var(--accent);color:var(--accent)}
+.pw-btn.primary{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
+.pw-btn.primary:hover{background:var(--accent-2);border-color:var(--accent-2);color:var(--accent-fg)}
+.pw-attempts{color:var(--text-faint);font-size:11px;margin-top:14px;text-align:center;letter-spacing:.5px}
+.pw-attempts.warn{color:var(--gold)}
+.pw-attempts.danger{color:#EF4444}
+.pw-hint{
+  margin-top:12px;padding:8px 12px;background:var(--bg-2);
+  border-radius:6px;font-size:11px;color:var(--text-faint);
+  text-align:center;border:1px dashed var(--border);line-height:1.5;
+}
+
+/* Dev mode badge (visible when unlocked) */
+.dev-badge{
+  position:fixed;bottom:24px;right:24px;z-index:90;
+  background:var(--accent);color:var(--accent-fg);
+  padding:10px 18px;border-radius:100px;font-size:12px;font-weight:700;
+  display:none;align-items:center;gap:8px;cursor:pointer;
+  box-shadow:var(--shadow-glow);
+  transition:transform .2s,box-shadow .2s;
+  letter-spacing:.5px;
+}
+body.dev-mode .dev-badge{display:inline-flex}
+.dev-badge:hover{transform:scale(1.05);box-shadow:0 0 32px rgba(249,115,22,.5)}
+.dev-badge .lock-icon{font-size:14px}
+.dev-badge .lock-text{opacity:.9}
+
+/* When in locked mode, dim edit hints */
+body:not(.dev-mode) [contenteditable="true"]{cursor:default}
+body:not(.dev-mode) .content [contenteditable="true"]:hover{
+  background:transparent;box-shadow:none;
+}
+
+/* Export menu item locked state */
+.tb-menu button.locked{opacity:.45;cursor:not-allowed}
+.tb-menu button.locked::after{content:"🔒";margin-left:auto;font-size:11px;opacity:.7}
+.tb-menu button.locked:hover{background:none;color:var(--text)}
+
+/* Edit button when dev mode unlocked */
+body.dev-mode #editBtn{border-color:var(--accent);color:var(--accent)}
+body.dev-mode #editBtn:hover{background:var(--accent-soft)}
+
 </style>
 </head>
 <body>
@@ -599,7 +688,7 @@ body.edit-on .edit-hint{display:inline-flex}
   <main class="main">
     <div class="toolbar">
       <div class="tb-title">579 百工集 0-1 发展史</div>
-      <button class="tb-btn" id="editBtn" title="切换编辑模式 (⌘E)"><span class="tb-icon">✏️</span><span class="tb-label">编辑</span></button>
+      <button class="tb-btn" id="editBtn" title="开发者模式（输入密码后可编辑）"><span class="tb-icon">🔒</span><span class="tb-label">开发者</span></button>
       <div class="tb-menu-wrap">
         <button class="tb-btn" id="exportBtn" title="导出 / 导入"><span class="tb-icon">⋯</span><span class="tb-label">更多</span></button>
         <div class="tb-menu" id="exportMenu">
@@ -628,6 +717,26 @@ body.edit-on .edit-hint{display:inline-flex}
 </div>
 
 <div class="toast" id="toast"></div>
+
+<div class="dev-badge" id="devBadge" title="点击锁定并返回只读模式">
+  <span class="lock-icon">🔓</span>
+  <span class="lock-text">开发者模式</span>
+</div>
+
+<div class="pw-modal" id="pwModal" role="dialog" aria-labelledby="pwTitle">
+  <div class="pw-card">
+    <h3 id="pwTitle">开发者模式</h3>
+    <p class="pw-sub">输入密码后可启用编辑、复制、导出等所有功能。<br>无密码用户仅可查看内容。</p>
+    <input type="password" class="pw-input" id="pwInput" placeholder="请输入开发者密码" autocomplete="off" spellcheck="false">
+    <div class="pw-error" id="pwError"></div>
+    <div class="pw-actions">
+      <button class="pw-btn" id="pwCancel">取消</button>
+      <button class="pw-btn primary" id="pwSubmit">解锁</button>
+    </div>
+    <div class="pw-attempts" id="pwAttempts"></div>
+    <div class="pw-hint">默认密码请向项目负责人索取 · 3 次错误后锁定 30 秒</div>
+  </div>
+</div>
 
 <div class="lightbox" id="lightbox" role="dialog">
   <button class="lb-close" id="lbClose" aria-label="关闭">✕</button>
@@ -847,7 +956,11 @@ function setEdit(on){
   $('editBtn').querySelector('.tb-label').textContent = on ? '完成' : '编辑';
 }
 let editOn = false;
-$('editBtn').onclick = () => { setEdit(!editOn); if(!editOn){syncFromDOM();save();buildToc();} };
+$('editBtn').onclick = () => {
+  if (!devMode){ showPwModal(); return; }
+  setEdit(!editOn);
+  if (!editOn){ syncFromDOM(); save(); buildToc(); }
+};
 
 function syncFromDOM(){
   data.events.forEach(ev => {
@@ -1027,6 +1140,11 @@ $('exportMenu').onclick=e=>{
   const btn=e.target.closest('button[data-act]');if(!btn)return;
   exportMenu.classList.remove('open');
   const act=btn.dataset.act;
+  // Locked actions require dev mode
+  if (LOCKED_ACTIONS.has(act) && !devMode){
+    showPwModal();
+    return;
+  }
   const title='579百工集_发展史_v4';
   if(act==='copy-json')copyText(JSON.stringify(data,null,2),'JSON');
   else if(act==='download-json'){downloadFile(title+'.json',JSON.stringify(data,null,2),'application/json;charset=utf-8');toast('✓ JSON 已下载','success');}
@@ -1067,6 +1185,85 @@ document.addEventListener('keydown',e=>{
   if(e.key==='ArrowLeft')$('lbPrev').click();
   if(e.key==='ArrowRight')$('lbNext').click();
 });
+
+/* ========== Developer Mode Init ========== */
+const DEV_PASSWORD = 'mankun579';
+let devMode = false;
+let pwAttempts = 0;
+let lockoutUntil = 0;
+const LOCKED_ACTIONS = new Set(['copy-json', 'download-json', 'reset']);
+
+function showPwModal(){
+  if (Date.now() < lockoutUntil){
+    const sec = Math.ceil((lockoutUntil - Date.now())/1000);
+    toast('⏳ 密码输入已锁定，请 '+sec+' 秒后再试', 'error');
+    return;
+  }
+  $('pwError').textContent = '';
+  $('pwInput').value = '';
+  const remaining = 3 - pwAttempts;
+  $('pwAttempts').textContent = '剩余尝试次数: ' + remaining + ' / 3';
+  $('pwAttempts').className = 'pw-attempts' + (remaining <= 1 ? ' danger' : remaining <= 2 ? ' warn' : '');
+  $('pwModal').classList.add('show');
+  setTimeout(() => $('pwInput').focus(), 100);
+}
+function hidePwModal(){ $('pwModal').classList.remove('show'); }
+
+function tryUnlock(pw){
+  if (Date.now() < lockoutUntil) return;
+  if (pw === DEV_PASSWORD){
+    devMode = true;
+    pwAttempts = 0;
+    hidePwModal();
+    document.body.classList.add('dev-mode');
+    $('editBtn').innerHTML = '<span class="tb-icon">✏️</span><span class="tb-label">编辑</span>';
+    $('editBtn').title = '切换编辑模式 (⌘E)';
+    refreshExportMenuState();
+    toast('✓ 开发者模式已解锁', 'success');
+  } else {
+    pwAttempts++;
+    $('pwError').textContent = '✗ 密码错误';
+    const remaining = 3 - pwAttempts;
+    $('pwAttempts').textContent = '剩余尝试次数: ' + remaining + ' / 3';
+    $('pwAttempts').className = 'pw-attempts danger';
+    if (pwAttempts >= 3){
+      lockoutUntil = Date.now() + 30000;
+      pwAttempts = 0;
+      hidePwModal();
+      toast('🔒 连续 3 次错误，已锁定 30 秒', 'error');
+    }
+  }
+}
+function lockDevMode(){
+  if (!devMode) return;
+  devMode = false;
+  setEdit(false);
+  document.body.classList.remove('dev-mode');
+  $('editBtn').innerHTML = '<span class="tb-icon">🔒</span><span class="tb-label">开发者</span>';
+  $('editBtn').title = '开发者模式（输入密码后可编辑/导出）';
+  refreshExportMenuState();
+  toast('🔒 已锁定为只读模式', 'success');
+}
+function requireDev(){
+  if (!devMode){ showPwModal(); return false; }
+  return true;
+}
+function refreshExportMenuState(){
+  document.querySelectorAll('#exportMenu button[data-act]').forEach(btn => {
+    if (LOCKED_ACTIONS.has(btn.dataset.act)){
+      if (devMode){ btn.classList.remove('locked'); }
+      else { btn.classList.add('locked'); }
+    }
+  });
+}
+
+// Wire up password modal
+$('pwSubmit').onclick = () => tryUnlock($('pwInput').value);
+$('pwInput').onkeydown = e => { if (e.key === 'Enter') tryUnlock($('pwInput').value); };
+$('pwCancel').onclick = hidePwModal;
+$('pwModal').onclick = e => { if (e.target === $('pwModal')) hidePwModal(); };
+$('devBadge').onclick = lockDevMode;
+refreshExportMenuState();
 
 loadData();
 render();
